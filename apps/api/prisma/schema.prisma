@@ -1,0 +1,255 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserStatus {
+  ACTIVE
+  SUSPENDED
+  DEACTIVATED
+}
+
+enum ChallengeStatus {
+  DRAFT
+  SCHEDULED
+  ACTIVE
+  COMPLETED
+  CANCELLED
+}
+
+enum ChallengeVisibility {
+  PRIVATE
+  INVITE_ONLY
+  PUBLIC
+}
+
+enum ChallengeCategory {
+  FITNESS
+  LEARNING
+  WELLNESS
+  FINANCE
+  PRODUCTIVITY
+  OTHER
+}
+
+enum ProofType {
+  PHOTO
+  TEXT
+  LINK
+  MANUAL
+}
+
+enum ParticipantStatus {
+  ACTIVE
+  COMPLETED
+  FAILED
+  WITHDRAWN
+}
+
+enum VerificationStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  NEEDS_REVIEW
+}
+
+enum TransactionType {
+  DEPOSIT
+  STAKE_LOCK
+  PENALTY
+  REWARD
+  REFUND
+  WITHDRAWAL
+  ADJUSTMENT
+}
+
+enum TransactionStatus {
+  PENDING
+  COMPLETED
+  FAILED
+  REVERSED
+}
+
+enum NotificationType {
+  AUTH
+  CHALLENGE
+  CHECK_IN
+  PAYMENT
+  SYSTEM
+}
+
+model User {
+  id             String                 @id @default(uuid()) @db.Uuid
+  firstName      String                 @db.VarChar(100)
+  lastName       String                 @db.VarChar(100)
+  username       String?                @unique @db.VarChar(50)
+  email          String                 @unique @db.VarChar(255)
+  passwordHash   String
+  avatarUrl      String?
+  countryCode    String?                @db.VarChar(2)
+  timezone       String                 @default("UTC") @db.VarChar(64)
+  isAnonymous    Boolean                @default(false)
+  emailVerified  Boolean                @default(false)
+  status         UserStatus             @default(ACTIVE)
+  lastLoginAt    DateTime?
+  createdAt      DateTime               @default(now())
+  updatedAt      DateTime               @updatedAt
+  refreshTokens  RefreshToken[]
+  wallets        Wallet[]
+  challenges     Challenge[]            @relation("ChallengeCreator")
+  participations ChallengeParticipant[]
+  transactions   LedgerTransaction[]
+  notifications  Notification[]
+
+  @@index([email])
+  @@index([status])
+}
+
+model RefreshToken {
+  id        String    @id @default(uuid()) @db.Uuid
+  userId    String    @db.Uuid
+  tokenHash String
+  expiresAt DateTime
+  revokedAt DateTime?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([expiresAt])
+  @@index([revokedAt])
+}
+
+model Wallet {
+  id               String              @id @default(uuid()) @db.Uuid
+  userId           String              @db.Uuid
+  currency         String              @default("USD") @db.VarChar(3)
+  availableBalance Decimal             @default(0) @db.Decimal(18, 2)
+  lockedBalance    Decimal             @default(0) @db.Decimal(18, 2)
+  createdAt        DateTime            @default(now())
+  updatedAt        DateTime            @updatedAt
+  user             User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  transactions     LedgerTransaction[]
+
+  @@unique([userId, currency])
+  @@index([userId])
+}
+
+model Challenge {
+  id                     String                 @id @default(uuid()) @db.Uuid
+  creatorId              String                 @db.Uuid
+  title                  String                 @db.VarChar(160)
+  description            String?
+  category               ChallengeCategory
+  proofType              ProofType
+  durationDays           Int
+  graceDays              Int                    @default(0)
+  dailyPenaltyPercentage Decimal                @db.Decimal(5, 2)
+  stakeAmount            Decimal                @db.Decimal(18, 2)
+  currency               String                 @default("USD") @db.VarChar(3)
+  visibility             ChallengeVisibility    @default(PRIVATE)
+  status                 ChallengeStatus        @default(DRAFT)
+  startDate              DateTime?
+  endDate                DateTime?
+  maximumParticipants    Int?
+  createdAt              DateTime               @default(now())
+  updatedAt              DateTime               @updatedAt
+  creator                User                   @relation("ChallengeCreator", fields: [creatorId], references: [id], onDelete: Restrict)
+  participants           ChallengeParticipant[]
+  transactions           LedgerTransaction[]
+
+  @@index([creatorId])
+  @@index([status])
+  @@index([visibility])
+  @@index([startDate])
+}
+
+model ChallengeParticipant {
+  id             String            @id @default(uuid()) @db.Uuid
+  challengeId    String            @db.Uuid
+  userId         String            @db.Uuid
+  initialStake   Decimal           @db.Decimal(18, 2)
+  remainingStake Decimal           @db.Decimal(18, 2)
+  totalPenalty   Decimal           @default(0) @db.Decimal(18, 2)
+  currentStreak  Int               @default(0)
+  missedDays     Int               @default(0)
+  graceDaysUsed  Int               @default(0)
+  status         ParticipantStatus @default(ACTIVE)
+  joinedAt       DateTime          @default(now())
+  completedAt    DateTime?
+  updatedAt      DateTime          @updatedAt
+  challenge      Challenge         @relation(fields: [challengeId], references: [id], onDelete: Cascade)
+  user           User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  checkIns       CheckIn[]
+
+  @@unique([challengeId, userId])
+  @@index([userId])
+  @@index([status])
+}
+
+model CheckIn {
+  id                     String             @id @default(uuid()) @db.Uuid
+  participantId          String             @db.Uuid
+  challengeDate          DateTime
+  proofUrl               String?
+  proofText              String?
+  verificationStatus     VerificationStatus @default(PENDING)
+  verificationConfidence Decimal?           @db.Decimal(5, 4)
+  verificationReason     String?
+  submittedAt            DateTime?
+  verifiedAt             DateTime?
+  createdAt              DateTime           @default(now())
+  updatedAt              DateTime           @updatedAt
+  participant            ChallengeParticipant @relation(fields: [participantId], references: [id], onDelete: Cascade)
+
+  @@unique([participantId, challengeDate])
+  @@index([verificationStatus])
+  @@index([challengeDate])
+}
+
+model LedgerTransaction {
+  id             String            @id @default(uuid()) @db.Uuid
+  walletId       String            @db.Uuid
+  userId         String            @db.Uuid
+  challengeId    String?           @db.Uuid
+  type           TransactionType
+  amount         Decimal           @db.Decimal(18, 2)
+  currency       String            @db.VarChar(3)
+  status         TransactionStatus @default(PENDING)
+  reference      String?           @db.VarChar(120)
+  idempotencyKey String            @unique @db.VarChar(120)
+  description    String?
+  metadata       Json?
+  createdAt      DateTime          @default(now())
+  updatedAt      DateTime          @updatedAt
+  wallet         Wallet            @relation(fields: [walletId], references: [id], onDelete: Restrict)
+  user           User              @relation(fields: [userId], references: [id], onDelete: Restrict)
+  challenge      Challenge?        @relation(fields: [challengeId], references: [id], onDelete: SetNull)
+
+  @@index([walletId])
+  @@index([userId])
+  @@index([challengeId])
+  @@index([status])
+  @@index([createdAt])
+}
+
+model Notification {
+  id        String           @id @default(uuid()) @db.Uuid
+  userId    String           @db.Uuid
+  type      NotificationType
+  title     String           @db.VarChar(160)
+  message   String
+  isRead    Boolean          @default(false)
+  metadata  Json?
+  createdAt DateTime         @default(now())
+  updatedAt DateTime         @updatedAt
+  user      User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, isRead])
+  @@index([type])
+  @@index([createdAt])
+}

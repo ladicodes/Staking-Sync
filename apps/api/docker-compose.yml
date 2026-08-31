@@ -1,0 +1,30 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: stakesync
+      POSTGRES_PASSWORD: stakesync
+      POSTGRES_DB: stakesync
+    ports:
+      - "5432:5432"
+    volumes:
+      - stakesync-postgres:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U stakesync -d stakesync"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  api:
+    build: .
+    depends_on:
+      postgres:
+        condition: service_healthy
+    env_file:
+      - .env
+    ports:
+      - "3001:3001"
+    command: sh -c "npx prisma migrate deploy && node dist/src/main.js"
+
+volumes:
+  stakesync-postgres:
