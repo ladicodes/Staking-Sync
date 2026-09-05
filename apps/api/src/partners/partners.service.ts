@@ -64,6 +64,16 @@ export class PartnersService {
     });
     if (!otherUser) return null;
 
+    const today = startOfDay(new Date());
+    const [myCheckIn, otherCheckIn] = await Promise.all([
+      this.prisma.partnerCheckIn.findUnique({
+        where: { partnershipId_userId_checkInDate: { partnershipId: settled.id, userId, checkInDate: today } }
+      }),
+      this.prisma.partnerCheckIn.findUnique({
+        where: { partnershipId_userId_checkInDate: { partnershipId: settled.id, userId: otherId, checkInDate: today } }
+      })
+    ]);
+
     return {
       partnership: toPartnershipDto(settled),
       otherUserId: otherId,
@@ -72,7 +82,9 @@ export class PartnersService {
       mySide: side,
       myStakeRemaining: toNumber(side === 'A' ? settled.stakeRemainingA : settled.stakeRemainingB),
       otherStakeRemaining: toNumber(side === 'A' ? settled.stakeRemainingB : settled.stakeRemainingA),
-      isRequester: settled.requestedById === userId
+      isRequester: settled.requestedById === userId,
+      myCheckedInToday: myCheckIn?.status === 'COMPLETED',
+      otherCheckedInToday: otherCheckIn?.status === 'COMPLETED'
     };
   }
 

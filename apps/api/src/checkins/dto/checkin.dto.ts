@@ -1,5 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { CheckIn, VerificationStatus } from '@prisma/client';
+import { CheckIn, User, VerificationStatus } from '@prisma/client';
 
 export class CheckInDto {
   @ApiProperty() id: string;
@@ -12,6 +12,10 @@ export class CheckInDto {
   @ApiProperty({ nullable: true }) submittedAt: Date | null;
 }
 
+export class PendingCheckInDto extends CheckInDto {
+  @ApiProperty() userName: string;
+}
+
 export function toCheckInDto(checkIn: CheckIn): CheckInDto {
   return {
     id: checkIn.id,
@@ -22,5 +26,14 @@ export function toCheckInDto(checkIn: CheckIn): CheckInDto {
     proofUrl: checkIn.proofUrl,
     proofText: checkIn.proofText,
     submittedAt: checkIn.submittedAt
+  };
+}
+
+type CheckInWithParticipantUser = CheckIn & { participant: { user: Pick<User, 'firstName' | 'lastName'> } };
+
+export function toPendingCheckInDto(checkIn: CheckInWithParticipantUser): PendingCheckInDto {
+  return {
+    ...toCheckInDto(checkIn),
+    userName: `${checkIn.participant.user.firstName} ${checkIn.participant.user.lastName}`.trim()
   };
 }

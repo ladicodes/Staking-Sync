@@ -10,4 +10,6 @@ export class MyPartnershipDto {
   @ApiProperty() myStakeRemaining: number;
   @ApiProperty() otherStakeRemaining: number;
   @ApiProperty() isRequester: boolean;
+  @ApiProperty() myCheckedInToday: boolean;
+  @ApiProperty() otherCheckedInToday: boolean;
 }

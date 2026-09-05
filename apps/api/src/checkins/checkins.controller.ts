@@ -1,11 +1,12 @@
-import { Body, Controller, Get, Param, ParseUUIDPipe, Post, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, HttpCode, HttpStatus, Param, ParseUUIDPipe, Patch, Post, UseGuards } from '@nestjs/common';
 import { ApiBearerAuth, ApiOkResponse, ApiTags } from '@nestjs/swagger';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { JwtUser } from '../auth/types/jwt-user.type';
 import { CheckInsService } from './checkins.service';
 import { SubmitCheckInDto } from './dto/submit-checkin.dto';
-import { CheckInDto } from './dto/checkin.dto';
+import { ReviewCheckInDto } from './dto/review-checkin.dto';
+import { CheckInDto, PendingCheckInDto } from './dto/checkin.dto';
 
 @ApiTags('checkins')
 @Controller('checkins')
@@ -26,9 +27,29 @@ export class CheckInsController {
     return this.checkInsService.getToday(participantId);
   }
 
+  @Get('challenge/:challengeId/pending')
+  @ApiOkResponse({ type: [PendingCheckInDto] })
+  listPendingForChallenge(
+    @Param('challengeId', new ParseUUIDPipe()) challengeId: string,
+    @CurrentUser() user: JwtUser
+  ): Promise<PendingCheckInDto[]> {
+    return this.checkInsService.listPendingForChallenge(challengeId, user.id);
+  }
+
   @Post()
   @ApiOkResponse({ type: CheckInDto })
   submit(@Body() dto: SubmitCheckInDto, @CurrentUser() user: JwtUser) {
     return this.checkInsService.submit(dto, user.id);
+  }
+
+  @Patch(':id/review')
+  @HttpCode(HttpStatus.OK)
+  @ApiOkResponse({ type: CheckInDto })
+  review(
+    @Param('id', new ParseUUIDPipe()) id: string,
+    @Body() dto: ReviewCheckInDto,
+    @CurrentUser() user: JwtUser
+  ): Promise<CheckInDto> {
+    return this.checkInsService.review(id, dto, user.id);
   }
 }
