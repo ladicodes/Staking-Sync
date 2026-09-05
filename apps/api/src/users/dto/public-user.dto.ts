@@ -20,6 +20,9 @@ export class PublicUser {
   @ApiProperty({ nullable: true })
   avatarUrl: string | null;
 
+  @ApiProperty({ nullable: true })
+  leetcodeUsername: string | null;
+
   @ApiProperty()
   isAnonymous: boolean;
 
@@ -35,6 +38,7 @@ export function toPublicUser(user: User): PublicUser {
     username: user.username,
     email: user.email,
     avatarUrl: user.avatarUrl,
+    leetcodeUsername: user.leetcodeUsername,
     isAnonymous: user.isAnonymous,
     createdAt: user.createdAt
   };

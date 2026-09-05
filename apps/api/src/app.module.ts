@@ -13,6 +13,13 @@ import { AuthModule } from './auth/auth.module';
 import { PrismaModule } from './database/prisma.module';
 import { HealthModule } from './health/health.module';
 import { UsersModule } from './users/users.module';
+import { ChallengesModule } from './challenges/challenges.module';
+import { CheckInsModule } from './checkins/checkins.module';
+import { WalletModule } from './wallet/wallet.module';
+import { LeaderboardModule } from './leaderboard/leaderboard.module';
+import { NotificationsModule } from './notifications/notifications.module';
+import { PartnersModule } from './partners/partners.module';
+import { VerificationModule } from './verification/verification.module';
 
 @Module({
   imports: [
@@ -30,7 +37,14 @@ import { UsersModule } from './users/users.module';
     PrismaModule,
     AuthModule,
     UsersModule,
-    HealthModule
+    HealthModule,
+    ChallengesModule,
+    CheckInsModule,
+    WalletModule,
+    LeaderboardModule,
+    NotificationsModule,
+    PartnersModule,
+    VerificationModule
   ],
   providers: [
     {

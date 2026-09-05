@@ -41,6 +41,7 @@ enum ProofType {
   TEXT
   LINK
   MANUAL
+  LEETCODE
 }
 
 enum ParticipantStatus {
@@ -82,6 +83,17 @@ enum NotificationType {
   SYSTEM
 }
 
+enum PartnershipStatus {
+  PENDING
+  ACTIVE
+  ENDED
+}
+
+enum PartnerCheckInStatus {
+  COMPLETED
+  MISSED
+}
+
 model User {
   id             String                 @id @default(uuid()) @db.Uuid
   firstName      String                 @db.VarChar(100)
@@ -90,6 +102,7 @@ model User {
   email          String                 @unique @db.VarChar(255)
   passwordHash   String
   avatarUrl      String?
+  leetcodeUsername String?              @db.VarChar(50)
   countryCode    String?                @db.VarChar(2)
   timezone       String                 @default("UTC") @db.VarChar(64)
   isAnonymous    Boolean                @default(false)
@@ -104,6 +117,9 @@ model User {
   participations ChallengeParticipant[]
   transactions   LedgerTransaction[]
   notifications  Notification[]
+  partnershipsAsA Partnership[]         @relation("PartnershipUserA")
+  partnershipsAsB Partnership[]         @relation("PartnershipUserB")
+  partnerCheckIns PartnerCheckIn[]
 
   @@index([email])
   @@index([status])
@@ -252,4 +268,42 @@ model Notification {
   @@index([userId, isRead])
   @@index([type])
   @@index([createdAt])
+}
+
+model Partnership {
+  id                 String               @id @default(uuid()) @db.Uuid
+  userAId            String               @db.Uuid
+  userBId            String               @db.Uuid
+  requestedById      String               @db.Uuid
+  status             PartnershipStatus    @default(PENDING)
+  stakeAmount        Decimal              @db.Decimal(18, 2)
+  stakeRemainingA    Decimal              @db.Decimal(18, 2)
+  stakeRemainingB    Decimal              @db.Decimal(18, 2)
+  settledThroughDate DateTime
+  createdAt          DateTime             @default(now())
+  respondedAt        DateTime?
+  endedAt            DateTime?
+  updatedAt          DateTime             @updatedAt
+  userA              User                 @relation("PartnershipUserA", fields: [userAId], references: [id], onDelete: Cascade)
+  userB              User                 @relation("PartnershipUserB", fields: [userBId], references: [id], onDelete: Cascade)
+  checkIns           PartnerCheckIn[]
+
+  @@index([userAId])
+  @@index([userBId])
+  @@index([status])
+}
+
+model PartnerCheckIn {
+  id            String               @id @default(uuid()) @db.Uuid
+  partnershipId String               @db.Uuid
+  userId        String               @db.Uuid
+  checkInDate   DateTime
+  status        PartnerCheckInStatus @default(COMPLETED)
+  createdAt     DateTime             @default(now())
+  partnership   Partnership          @relation(fields: [partnershipId], references: [id], onDelete: Cascade)
+  user          User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([partnershipId, userId, checkInDate])
+  @@index([partnershipId])
+  @@index([userId])
 }
